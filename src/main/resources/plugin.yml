@@ -1,0 +1,7 @@
+name: Oyamatsumi
+version: '0.1'
+main: online.aruka.oyamatsumi.Oyamatsumi
+api-version: '1.21'
+softdepend:
+  - GriefPrevention
+  - WorldGuard
