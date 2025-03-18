@@ -27,7 +27,8 @@ data class MiningSettingComponent(
     val pattern: MiningPattern,
     val enabledGameMode: Set<GameMode> = setOf(GameMode.SURVIVAL),
     val predicate: (Player) -> Boolean = requiresShift,
-    val durabilityReducer: (ItemStack, Set<Location>) -> Unit = reduceOne
+    val durabilityReducer: (ItemStack, Set<Location>) -> Unit = reduceOne,
+    val regionProtectChecker: (Player, Set<Location>) -> Map<Location, Boolean> = defaultRegionChecker
 ) {
 
     companion object {
@@ -41,6 +42,40 @@ data class MiningSettingComponent(
                     (meta as Damageable).damage += 1
                 }
             }
+        }
+
+        private val defaultRegionChecker: (Player, Set<Location>) -> Map<Location, Boolean> = { player, locations ->
+            val result: MutableMap<Location, Boolean> = mutableMapOf()
+            for (loc in locations) {
+                val element: MutableSet<Boolean> = mutableSetOf(true)
+                if (Oyamatsumi.GRIEF_PREVENTION_ENABLED) {
+                    element.add(Oyamatsumi.GRIEF_PREVENTION_DATA!!
+                        .claims
+                        .filter { c -> c.contains(loc, false, false) }
+                        .all { c -> c.hasExplicitPermission(player, ClaimPermission.Build) }
+                    )
+                }
+
+                if (Oyamatsumi.WORLD_GUARD_ENABLED) {
+                    val regionManager: RegionManager = Oyamatsumi.WORLD_GUARD!!.platform
+                        .regionContainer
+                        .get(BukkitAdapter.adapt(loc.world))
+                        ?: continue
+                    val x: Int = loc.blockX
+                    val y: Int = loc.blockY
+                    val z: Int = loc.blockZ
+
+                    element.add(regionManager.regions
+                        .filter{ (_, region) -> region.contains(BlockVector3.at(x, y, z))}
+                        .all { (_, region) ->
+                            region.members.contains(player.uniqueId)
+                                    || region.owners.contains(player.uniqueId)
+                        })
+                }
+                result[loc] = element.size == 1 && element.first()
+            }
+
+            result
         }
     }
 
@@ -59,43 +94,17 @@ data class MiningSettingComponent(
         )
 
         durabilityReducer(tool, blocks)
-
-        for (loc in blocks) {
-            if (Oyamatsumi.GRIEF_PREVENTION_ENABLED) {
-                if (!Oyamatsumi.GRIEF_PREVENTION_DATA!!
-                    .claims
-                    .filter { c -> c.contains(loc, false, false) }
-                    .all { c -> c.hasExplicitPermission(player, ClaimPermission.Build) }
-                ) continue
-            }
-
-            if (Oyamatsumi.WORLD_GUARD_ENABLED) {
-                val regionManager: RegionManager = Oyamatsumi.WORLD_GUARD!!.platform
-                    .regionContainer
-                    .get(BukkitAdapter.adapt(event.block.world))
-                    ?: continue
-                val x: Int = event.block.x
-                val y: Int = event.block.y
-                val z: Int = event.block.z
-
-                if (!regionManager.regions
-                        .filter{ (_, region) -> region.contains(BlockVector3.at(x, y, z))}
-                        .all { (_, region) ->
-                            region.members.contains(player.uniqueId)
-                                    || region.owners.contains(player.uniqueId)
-                        }
-                    ) continue
-            }
-
-            loc.block.let { b ->
-                if (b.isPreferredTool(tool)) {
-                    player.giveExp(event.expToDrop)
-                    player.inventory.addItem(*b.getDrops(tool).toTypedArray())
+        regionProtectChecker(player, blocks)
+            .filter { (_, result) -> result }
+            .map { (l, _) -> l.block }
+            .forEach { block ->
+                if (block.isPreferredTool(tool)) {
+                    player.giveExp(event.expToDrop, true)
+                    player.inventory.addItem(*block.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }
-                    b.type = Material.AIR
+                    block.type = Material.AIR
                 }
             }
-        }
     }
 
     private fun getHitBlockFace(player: Player): BlockFace? {
