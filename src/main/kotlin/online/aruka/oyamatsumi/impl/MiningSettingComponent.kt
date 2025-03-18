@@ -8,6 +8,7 @@ import online.aruka.oyamatsumi.Oyamatsumi
 import online.aruka.oyamatsumi.interfaces.MiningPattern
 import org.bukkit.FluidCollisionMode
 import org.bukkit.GameMode
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Registry
@@ -25,12 +26,21 @@ data class MiningSettingComponent(
     val maxMiningBlocks: Int,
     val pattern: MiningPattern,
     val enabledGameMode: Set<GameMode> = setOf(GameMode.SURVIVAL),
-    val predicate: (Player) -> Boolean = requiresShift
+    val predicate: (Player) -> Boolean = requiresShift,
+    val durabilityReducer: (ItemStack, Set<Location>) -> Unit = reduceOne
 ) {
 
     companion object {
         private val requiresShift: (Player) -> Boolean = { player ->
             player.isSneaking
+        }
+
+        private val reduceOne: (ItemStack, Set<Location>) -> Unit = { tool, _ ->
+            if (!tool.itemMeta.isUnbreakable && tool.itemMeta is Damageable) {
+                tool.editMeta { meta ->
+                    (meta as Damageable).damage += 1
+                }
+            }
         }
     }
 
@@ -39,20 +49,18 @@ data class MiningSettingComponent(
         val tool: ItemStack = event.player.inventory.itemInMainHand
         val player: Player = event.player
 
-        if (!tool.itemMeta.isUnbreakable && tool.itemMeta is Damageable) {
-            tool.editMeta { meta ->
-                (meta as Damageable).damage += 1
-            }
-        }
+        val blocks: Set<Location> = this.pattern.onMining(
+            block = event.block,
+            face = hitBlockFace,
+            tool = tool,
+            miner = player,
+            maxMiningBlock = maxMiningBlocks,
+            targets = targets
+        )
 
-        for (loc in this.pattern.onMining(
-            event.block,
-            hitBlockFace,
-            tool,
-            player,
-            maxMiningBlocks,
-            this.targets
-        )) {
+        durabilityReducer(tool, blocks)
+
+        for (loc in blocks) {
             if (Oyamatsumi.GRIEF_PREVENTION_ENABLED) {
                 if (!Oyamatsumi.GRIEF_PREVENTION_DATA!!
                     .claims
