@@ -11,7 +11,7 @@ import org.bukkit.inventory.ItemStack
 object MineListener: Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     fun BlockBreakEvent.onBreak() {
-        if (this.isCancelled) return
+        if (this.isCancelled || this.player.uniqueId !in MiningManager.ENABLED_PLAYERS) return
         val tool: ItemStack = this.player.inventory.itemInMainHand
         val blockType: Material = this.block.type
 

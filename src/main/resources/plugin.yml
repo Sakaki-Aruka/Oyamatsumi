@@ -5,3 +5,15 @@ api-version: '1.21'
 softdepend:
   - GriefPrevention
   - WorldGuard
+
+commands:
+  miner:
+    description: "Toggle bulk mining."
+    usage: "/miner"
+    permission: oyamatsumi.normal
+    permission-message: "You do not have permission to use this command."
+
+permissions:
+  oyamatsumi.normal:
+    description: "This is a bulk mining permission node."
+    default: true

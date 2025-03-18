@@ -52,9 +52,15 @@ class Oyamatsumi : JavaPlugin() {
 
         var WORLD_GUARD_ENABLED: Boolean = false
         var WORLD_GUARD: WorldGuard? = null
+
+        lateinit var instance: Oyamatsumi
     }
 
     override fun onEnable() {
+
+        instance = this
+        MiningManager.loadEnabledPlayers()
+        getCommand("miner")?.setExecutor(MiningManager)
 
         Bukkit.getPluginManager().getPlugin("GriefPrevention")?.let { pl ->
             logger.info("GriefPrevention detected.")
@@ -197,5 +203,6 @@ class Oyamatsumi : JavaPlugin() {
 
     override fun onDisable() {
         // Plugin shutdown logic
+        MiningManager.flushEnabledPlayers()
     }
 }
