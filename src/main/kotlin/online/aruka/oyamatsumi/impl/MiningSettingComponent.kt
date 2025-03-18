@@ -82,7 +82,7 @@ data class MiningSettingComponent(
             loc.block.let { b ->
                 if (b.isPreferredTool(tool)) {
                     player.giveExp(event.expToDrop)
-                    player.inventory.addItem(*b.drops.toTypedArray())
+                    player.inventory.addItem(*b.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }
                     b.type = Material.AIR
                 }

@@ -15,9 +15,35 @@ import org.bukkit.plugin.java.JavaPlugin
 
 class Oyamatsumi : JavaPlugin() {
 
-    private val allPickaxes: Set<Material> = Material.entries.filter { type -> type.name.lowercase().endsWith("pickaxe") }.toSet()
-    private val allShovels: Set<Material> = Material.entries.filter { type -> type.name.lowercase().endsWith("shovel") }.toSet()
-    private val allAxes: Set<Material> = Material.entries.filter { type -> type.name.lowercase().endsWith("axe") }.toSet()
+    private fun nameSet(
+        predicate: (String) -> Boolean
+    ): Set<Material> {
+        return Material.entries
+            .filter { m -> predicate(m.name.lowercase()) }
+            .toSet()
+    }
+
+    private fun loosen(
+        vararg collections: Collection<Material>
+    ): Set<Material> {
+        val result: MutableSet<Material> = mutableSetOf()
+        for (c in collections) {
+            result.addAll(c)
+        }
+        return result
+    }
+
+    // tools
+    private val allPickaxes: Set<Material> = nameSet { s -> s.endsWith("pickaxe") }
+    private val allShovels: Set<Material> = nameSet { s -> s.endsWith("shovel") }
+    private val allAxes: Set<Material> = nameSet { s -> s.endsWith("axe") }
+    private val allHoes: Set<Material> = nameSet { s -> s.endsWith("hoe") }
+
+    // blocks
+    private val allLogs: Set<Material> = nameSet { s -> s.endsWith("log") }
+    private val allWoods: Set<Material> = nameSet { s -> s.endsWith("wood") }
+    private val allLeaves: Set<Material> = nameSet { s -> s.endsWith("leaves") }
+    private val allWools: Set<Material> = nameSet { s -> s.endsWith("wool") }
 
     companion object {
         var GRIEF_PREVENTION_ENABLED: Boolean = false
@@ -43,7 +69,7 @@ class Oyamatsumi : JavaPlugin() {
             logger.info("GriefPrevention not detected.")
         }
 
-        Bukkit.getPluginManager().getPlugin("WorldGuard")?.let { pl ->
+        Bukkit.getPluginManager().getPlugin("WorldGuard")?.let { _ ->
             logger.info("WorldGuard detected.")
             WORLD_GUARD_ENABLED = true
             WORLD_GUARD = WorldGuard.getInstance()
@@ -78,6 +104,46 @@ class Oyamatsumi : JavaPlugin() {
         )
 
         addNormalCategorizedSettings(
+            allAxes,
+            NormalVeinPattern(),
+            maxMiningBlock = 200,
+            *loosen(
+                allLogs,
+                allWoods,
+                setOf(
+                    Material.BROWN_MUSHROOM_BLOCK,
+                    Material.CARVED_PUMPKIN,
+                    Material.CRIMSON_HYPHAE,
+                    Material.CRIMSON_STEM,
+                    Material.MANGROVE_ROOTS,
+                    Material.MELON,
+                    Material.PUMPKIN,
+                    Material.RED_MUSHROOM_BLOCK,
+                    Material.MUSHROOM_STEM,
+                    Material.WARPED_HYPHAE,
+                    Material.WARPED_STEM
+                )
+            ).toTypedArray()
+        )
+
+        addNormalCategorizedSettings(
+            setOf(Material.SHEARS),
+            NormalVeinPattern(),
+            maxMiningBlock = 200,
+            *loosen(
+                allLeaves, allWools
+            ).toTypedArray(),
+            Material.COBWEB,
+        )
+
+        addNormalCategorizedSettings(
+            allHoes,
+            NormalVeinPattern(),
+            maxMiningBlock = 200,
+            *allLeaves.toTypedArray()
+        )
+
+        addNormalCategorizedSettings(
             allPickaxes,
             SquareTunnelPattern(),
             maxMiningBlock = 9,
@@ -94,80 +160,6 @@ class Oyamatsumi : JavaPlugin() {
             Material.ROOTED_DIRT
         )
 
-        addNormalCategorizedSettings(
-            allAxes,
-            NormalVeinPattern(),
-            maxMiningBlock = 200,
-            Material.ACACIA_LOG,
-            Material.ACACIA_WOOD,
-            Material.BIRCH_LOG,
-            Material.BIRCH_WOOD,
-            Material.BROWN_MUSHROOM_BLOCK,
-            Material.CARVED_PUMPKIN,
-            Material.CHERRY_LOG,
-            Material.CHERRY_WOOD,
-            Material.CRIMSON_HYPHAE,
-            Material.CRIMSON_STEM,
-            Material.DARK_OAK_LOG,
-            Material.DARK_OAK_WOOD,
-            Material.JUNGLE_LOG,
-            Material.JUNGLE_WOOD,
-            Material.MANGROVE_LOG,
-            Material.MANGROVE_ROOTS,
-            Material.MANGROVE_WOOD,
-            Material.MELON,
-            Material.OAK_LOG,
-            Material.OAK_WOOD,
-            Material.PUMPKIN,
-            Material.RED_MUSHROOM_BLOCK,
-            Material.SPRUCE_LOG,
-            Material.SPRUCE_WOOD,
-            Material.WARPED_HYPHAE,
-            Material.WARPED_STEM
-        )
-
-        addNormalCategorizedSettings(
-            setOf(Material.SHEARS),
-            NormalVeinPattern(),
-            maxMiningBlock = 200,
-            Material.ACACIA_LEAVES,
-            Material.AZALEA_LEAVES,
-            Material.BIRCH_LEAVES,
-            Material.BLACK_WOOL,
-            Material.BLUE_WOOL,
-            Material.BROWN_WOOL,
-            Material.CHERRY_LEAVES,
-            Material.COBWEB,
-            Material.CYAN_WOOL,
-            Material.DARK_OAK_LEAVES,
-            Material.FLOWERING_AZALEA_LEAVES,
-            Material.GRAY_WOOL,
-            Material.GREEN_WOOL,
-            Material.JUNGLE_LEAVES,
-            Material.LIGHT_BLUE_WOOL,
-            Material.LIGHT_GRAY_WOOL,
-            Material.LIME_WOOL,
-            Material.MAGENTA_WOOL,
-            Material.MANGROVE_LEAVES,
-            Material.OAK_LEAVES,
-            Material.ORANGE_WOOL,
-            Material.PINK_WOOL,
-            Material.PURPLE_WOOL,
-            Material.RED_WOOL,
-            Material.SPRUCE_LEAVES,
-            Material.WHITE_WOOL,
-            Material.YELLOW_WOOL
-        )
-
-        MiningManager.MINING_COMPONENTS.add(
-            MiningSettingComponent(
-                targets = setOf(Material.MAGMA_BLOCK),
-                tools = allPickaxes,
-                maxMiningBlocks = 200,
-                pattern = NormalVeinPattern()
-            )
-        )
-
         Material.entries
             .filter { type -> type.name.lowercase().endsWith("stone") }
             .forEach { type ->
@@ -181,32 +173,14 @@ class Oyamatsumi : JavaPlugin() {
                 )
             }
 
-        Material.entries
-            .filter { type -> type.name.lowercase().endsWith("ore") }
-            .forEach { type ->
-                MiningManager.MINING_COMPONENTS.add(
-                    MiningSettingComponent(
-                        targets = setOf(type),
-                        tools = allPickaxes,
-                        maxMiningBlocks = 200,
-                        pattern = NormalVeinPattern()
-                    )
-                )
-            }
-
-
-        Material.entries
-            .filter { type -> type.name.lowercase().startsWith("raw_") }
-            .forEach { type ->
-                MiningManager.MINING_COMPONENTS.add(
-                    MiningSettingComponent(
-                        targets = setOf(type),
-                        tools = allPickaxes,
-                        maxMiningBlocks = 200,
-                        pattern = NormalVeinPattern()
-                    )
-                )
-            }
+        addNormalCategorizedSettings(
+            tools = allPickaxes,
+            pattern = NormalVeinPattern(),
+            maxMiningBlock = 200,
+            Material.MAGMA_BLOCK,
+            *nameSet { s -> s.endsWith("ore") }.toTypedArray(),
+            *nameSet { s -> s.startsWith("raw_") }.toTypedArray()
+        )
 
     }
 
