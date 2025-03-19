@@ -7,11 +7,13 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.inventory.ItemStack
+import java.util.UUID
 
 object MineListener: Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     fun BlockBreakEvent.onBreak() {
-        if (this.isCancelled || this.player.uniqueId !in MiningManager.ENABLED_PLAYERS) return
+        val uid: UUID = this.player.uniqueId
+        if (this.isCancelled || uid !in MiningManager.ENABLED_PLAYERS || uid in MiningManager.FORCE_OFF_PLAYERS) return
         val tool: ItemStack = this.player.inventory.itemInMainHand
         val blockType: Material = this.block.type
 

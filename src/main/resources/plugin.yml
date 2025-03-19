@@ -19,3 +19,7 @@ permissions:
   oyamatsumi.normal:
     description: "This is a bulk mining permission node."
     default: true
+
+  oyamatsumi.admin:
+    description: "This is a Oyamatsumi admin permission node."
+    default: op

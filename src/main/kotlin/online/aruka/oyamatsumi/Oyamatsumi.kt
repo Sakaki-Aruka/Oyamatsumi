@@ -65,7 +65,7 @@ class Oyamatsumi : JavaPlugin() {
     override fun onEnable() {
 
         instance = this
-        MiningManager.loadEnabledPlayers()
+        MiningManager.loadPlayerSettings()
         getCommand("miner")?.setExecutor(MiningManager)
 
         Bukkit.getPluginManager().getPlugin("GriefPrevention")?.let { pl ->
@@ -226,6 +226,6 @@ class Oyamatsumi : JavaPlugin() {
 
     override fun onDisable() {
         // Plugin shutdown logic
-        MiningManager.flushEnabledPlayers()
+        MiningManager.flushPlayerSettings()
     }
 }
