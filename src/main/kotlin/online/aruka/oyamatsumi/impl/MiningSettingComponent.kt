@@ -99,6 +99,11 @@ data class MiningSettingComponent(
             .map { (l, _) -> l.block }
             .forEach { block ->
                 if (block.isPreferredTool(tool)) {
+
+                    if (Oyamatsumi.CORE_PROTECT_ENABLED) {
+                        Oyamatsumi.CORE_PROTECT_API!!.logRemoval(player.name, block.state)
+                    }
+
                     player.giveExp(event.expToDrop, true)
                     player.inventory.addItem(*block.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }

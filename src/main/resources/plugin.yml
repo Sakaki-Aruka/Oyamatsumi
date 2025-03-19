@@ -6,6 +6,7 @@ softdepend:
   - GriefPrevention
   - WorldGuard
   - PlaceholderAPI
+  - CoreProtect
 
 commands:
   miner:

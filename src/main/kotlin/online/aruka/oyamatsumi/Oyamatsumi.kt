@@ -3,6 +3,8 @@ package online.aruka.oyamatsumi
 import com.sk89q.worldguard.WorldGuard
 import me.ryanhamshire.GriefPrevention.DataStore
 import me.ryanhamshire.GriefPrevention.GriefPrevention
+import net.coreprotect.CoreProtect
+import net.coreprotect.CoreProtectAPI
 import online.aruka.oyamatsumi.impl.MiningManager
 import online.aruka.oyamatsumi.impl.MiningSettingComponent
 import online.aruka.oyamatsumi.impl.listener.MineListener
@@ -54,7 +56,8 @@ class Oyamatsumi : JavaPlugin() {
         var WORLD_GUARD_ENABLED: Boolean = false
         var WORLD_GUARD: WorldGuard? = null
 
-        var PLACEHOLDER_API_ENABLED: Boolean = false
+        var CORE_PROTECT_ENABLED: Boolean = false
+        var CORE_PROTECT_API: CoreProtectAPI? = null
 
         lateinit var instance: Oyamatsumi
     }
@@ -91,6 +94,16 @@ class Oyamatsumi : JavaPlugin() {
             OyamatsumiExpansion.register()
         } ?: run {
             logger.info("PlaceholderAPI not detected.")
+        }
+
+        Bukkit.getPluginManager().getPlugin("CoreProtect")?.let { pl ->
+            (pl as? CoreProtect)?.let { cp ->
+                CORE_PROTECT_ENABLED = true
+                CORE_PROTECT_API = cp.api
+                logger.info("CoreProtect detected.")
+            } ?: run {
+                logger.info("CoreProtect not detected.")
+            }
         }
 
         Bukkit.getPluginManager().registerEvents(MineListener, this)

@@ -24,6 +24,7 @@ repositories {
     }
 
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
+    maven("https://maven.playpro.com")
 }
 
 dependencies {
@@ -32,6 +33,7 @@ dependencies {
     implementation("com.github.GriefPrevention:GriefPrevention:16.18.4")
     implementation("com.sk89q.worldguard:worldguard-bukkit:7.0.13")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("net.coreprotect:coreprotect:22.4")
 }
 
 val targetJavaVersion = 21
