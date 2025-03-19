@@ -22,6 +22,8 @@ repositories {
     maven("https://maven.enginehub.org/repo/") {
         name = "sk89q-repo"
     }
+
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
 }
 
 dependencies {
@@ -29,6 +31,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.github.GriefPrevention:GriefPrevention:16.18.4")
     implementation("com.sk89q.worldguard:worldguard-bukkit:7.0.13")
+    compileOnly("me.clip:placeholderapi:2.11.6")
 }
 
 val targetJavaVersion = 21

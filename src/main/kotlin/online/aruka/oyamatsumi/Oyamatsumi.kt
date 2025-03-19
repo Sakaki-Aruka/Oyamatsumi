@@ -9,6 +9,7 @@ import online.aruka.oyamatsumi.impl.listener.MineListener
 import online.aruka.oyamatsumi.impl.pattern.NormalVeinPattern
 import online.aruka.oyamatsumi.impl.pattern.SquareTunnelPattern
 import online.aruka.oyamatsumi.interfaces.MiningPattern
+import online.aruka.oyamatsumi.placeholder.OyamatsumiExpansion
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.plugin.java.JavaPlugin
@@ -53,6 +54,8 @@ class Oyamatsumi : JavaPlugin() {
         var WORLD_GUARD_ENABLED: Boolean = false
         var WORLD_GUARD: WorldGuard? = null
 
+        var PLACEHOLDER_API_ENABLED: Boolean = false
+
         lateinit var instance: Oyamatsumi
     }
 
@@ -81,6 +84,13 @@ class Oyamatsumi : JavaPlugin() {
             WORLD_GUARD = WorldGuard.getInstance()
         } ?: run {
             logger.info("WorldGuard not detected.")
+        }
+
+        Bukkit.getPluginManager().getPlugin("PlaceholderAPI")?.let { _ ->
+            logger.info("PlaceholderAPI detected.")
+            OyamatsumiExpansion.register()
+        } ?: run {
+            logger.info("PlaceholderAPI not detected.")
         }
 
         Bukkit.getPluginManager().registerEvents(MineListener, this)
