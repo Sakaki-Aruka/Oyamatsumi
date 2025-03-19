@@ -1,5 +1,5 @@
 name: Oyamatsumi
-version: '0.1'
+version: '0.2'
 main: online.aruka.oyamatsumi.Oyamatsumi
 api-version: '1.21'
 softdepend:
