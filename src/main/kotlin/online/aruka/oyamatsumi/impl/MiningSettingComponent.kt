@@ -19,7 +19,6 @@ import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
-import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.RayTraceResult
 
 data class MiningSettingComponent(
@@ -28,25 +27,26 @@ data class MiningSettingComponent(
     val maxMiningBlocks: Int,
     val pattern: MiningPattern,
     val enabledGameMode: Set<GameMode> = setOf(GameMode.SURVIVAL),
-    val predicate: (Player) -> Boolean = requiresShift,
-    val durabilityReducer: (ItemStack, Set<Location>) -> Unit = reduceOne,
-    val regionProtectChecker: (Player, Set<Location>) -> Map<Location, Boolean> = defaultRegionChecker
+    val predicate: (Player) -> Boolean = PLAYER_REQUIRES,
+    val durabilityReducer: (ItemStack, Map<Location, Boolean>) -> Map<Location, Boolean> = REDUCE_ONE,
+    val regionProtectChecker: (Player, Set<Location>) -> Map<Location, Boolean> = DEFAULT_REGION_CHECKER
 ) {
 
     companion object {
-        private val requiresShift: (Player) -> Boolean = { player ->
+        private val PLAYER_REQUIRES: (Player) -> Boolean = { player ->
             player.isSneaking
         }
 
-        private val reduceOne: (ItemStack, Set<Location>) -> Unit = { tool, _ ->
+        private val REDUCE_ONE: (ItemStack, Map<Location, Boolean>) -> Map<Location, Boolean> = { tool, loc ->
             if (!tool.itemMeta.isUnbreakable && tool.itemMeta is Damageable) {
                 tool.editMeta { meta ->
                     (meta as Damageable).damage += 1
                 }
             }
+            loc
         }
 
-        private val defaultRegionChecker: (Player, Set<Location>) -> Map<Location, Boolean> = { player, locations ->
+        private val DEFAULT_REGION_CHECKER: (Player, Set<Location>) -> Map<Location, Boolean> = { player, locations ->
             val result: MutableMap<Location, Boolean> = mutableMapOf()
             for (loc in locations) {
                 val element: MutableSet<Boolean> = mutableSetOf(true)
@@ -95,8 +95,7 @@ data class MiningSettingComponent(
             targets = targets
         )
 
-        durabilityReducer(tool, blocks)
-        regionProtectChecker(player, blocks)
+        durabilityReducer(tool, regionProtectChecker(player, blocks))
             .filter { (_, result) -> result }
             .map { (l, _) -> l.block }
             .forEach { block ->
