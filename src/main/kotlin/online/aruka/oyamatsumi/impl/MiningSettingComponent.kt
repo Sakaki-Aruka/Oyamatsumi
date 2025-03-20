@@ -14,10 +14,12 @@ import org.bukkit.NamespacedKey
 import org.bukkit.Registry
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.BlockFace
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
+import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.RayTraceResult
 
 data class MiningSettingComponent(
@@ -104,7 +106,15 @@ data class MiningSettingComponent(
                         Oyamatsumi.CORE_PROTECT_API!!.logRemoval(player.name, block.state)
                     }
 
-                    player.giveExp(event.expToDrop, true)
+                    val hasMendingTool: Boolean = player.inventory
+                        .let { inv ->
+                            tool.enchantments.containsKey(Enchantment.MENDING)
+                                .or(inv.itemInOffHand.enchantments.containsKey(Enchantment.MENDING))
+                                .or(inv.armorContents.any { i ->
+                                    i?.enchantments?.containsKey(Enchantment.MENDING) == true
+                                })
+                        }
+                    player.giveExp(event.expToDrop, hasMendingTool)
                     player.inventory.addItem(*block.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }
                     block.type = Material.AIR
