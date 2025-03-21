@@ -83,10 +83,10 @@ class SquareTunnelPattern(
         val result: MutableSet<Location> = mutableSetOf()
         out@ for (i in 0..maxTunnelLength) {
             if (result.size >= maxMiningBlock) break
-            val center: Location = initDiff(block.location, face, i)
+            val center: Location = initDiff(block.location, face.oppositeFace, i)
             var changed = 0
             for (loc in square(center, face)) {
-                val b: Block = block.world.getBlockAt(loc)
+                val b: Block = loc.block
                 if (b.type !in targets) continue
                 if (result.size == maxMiningBlock) break@out
                 changed++
