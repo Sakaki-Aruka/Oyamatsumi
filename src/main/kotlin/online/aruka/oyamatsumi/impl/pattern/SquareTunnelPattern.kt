@@ -14,7 +14,8 @@ import kotlin.math.min
 import kotlin.math.pow
 
 class SquareTunnelPattern(
-    private val radius: Int = 1
+    private val radius: Int = 1,
+    private val moveCenterY: Int = radius - 1
 ): MiningPattern {
 
     private fun of(world: World, x: Int, y: Int, z: Int): Location {
@@ -52,8 +53,8 @@ class SquareTunnelPattern(
         val y: Int = base.blockY
         val z: Int = base.blockZ
         return when(face) {
-            BlockFace.EAST, BlockFace.WEST -> { of(world, x, y + di, z + dj) }
-            BlockFace.SOUTH, BlockFace.NORTH -> { of(world, x + di, y + dj, z) }
+            BlockFace.EAST, BlockFace.WEST -> { of(world, x, y + di + moveCenterY, z + dj) }
+            BlockFace.SOUTH, BlockFace.NORTH -> { of(world, x + di, y + dj + moveCenterY, z) }
             BlockFace.UP, BlockFace.DOWN -> { of(world, x + di, y, z + dj) }
             else -> base
         }
