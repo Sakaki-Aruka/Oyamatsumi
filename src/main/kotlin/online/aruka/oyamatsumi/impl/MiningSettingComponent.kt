@@ -113,7 +113,7 @@ data class MiningSettingComponent(
                                     i?.enchantments?.containsKey(Enchantment.MENDING) == true
                                 })
                         }
-                    player.giveExp(event.expToDrop, hasMendingTool)
+                    player.giveExp(event.expToDrop, hasMendingTool && event.expToDrop > 0)
                     player.inventory.addItem(*block.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }
                     block.type = Material.AIR
