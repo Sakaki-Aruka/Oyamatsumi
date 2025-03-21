@@ -1,7 +1,25 @@
 name: Oyamatsumi
-version: '0.1'
+version: '0.2'
 main: online.aruka.oyamatsumi.Oyamatsumi
 api-version: '1.21'
 softdepend:
   - GriefPrevention
   - WorldGuard
+  - PlaceholderAPI
+  - CoreProtect
+
+commands:
+  miner:
+    description: "Toggle bulk mining."
+    usage: "/miner"
+    permission: oyamatsumi.normal
+    permission-message: "You do not have permission to use this command."
+
+permissions:
+  oyamatsumi.normal:
+    description: "This is a bulk mining permission node."
+    default: true
+
+  oyamatsumi.admin:
+    description: "This is a Oyamatsumi admin permission node."
+    default: op

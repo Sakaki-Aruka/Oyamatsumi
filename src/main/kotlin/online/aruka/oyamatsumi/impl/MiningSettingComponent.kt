@@ -8,11 +8,13 @@ import online.aruka.oyamatsumi.Oyamatsumi
 import online.aruka.oyamatsumi.interfaces.MiningPattern
 import org.bukkit.FluidCollisionMode
 import org.bukkit.GameMode
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Registry
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.BlockFace
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.inventory.ItemStack
@@ -25,12 +27,57 @@ data class MiningSettingComponent(
     val maxMiningBlocks: Int,
     val pattern: MiningPattern,
     val enabledGameMode: Set<GameMode> = setOf(GameMode.SURVIVAL),
-    val predicate: (Player) -> Boolean = requiresShift
+    val predicate: (Player) -> Boolean = PLAYER_REQUIRES,
+    val durabilityReducer: (ItemStack, Map<Location, Boolean>) -> Map<Location, Boolean> = REDUCE_ONE,
+    val regionProtectChecker: (Player, Set<Location>) -> Map<Location, Boolean> = DEFAULT_REGION_CHECKER
 ) {
 
     companion object {
-        private val requiresShift: (Player) -> Boolean = { player ->
+        private val PLAYER_REQUIRES: (Player) -> Boolean = { player ->
             player.isSneaking
+        }
+
+        private val REDUCE_ONE: (ItemStack, Map<Location, Boolean>) -> Map<Location, Boolean> = { tool, loc ->
+            if (!tool.itemMeta.isUnbreakable && tool.itemMeta is Damageable) {
+                tool.editMeta { meta ->
+                    (meta as Damageable).damage += 1
+                }
+            }
+            loc
+        }
+
+        private val DEFAULT_REGION_CHECKER: (Player, Set<Location>) -> Map<Location, Boolean> = { player, locations ->
+            val result: MutableMap<Location, Boolean> = mutableMapOf()
+            for (loc in locations) {
+                val element: MutableSet<Boolean> = mutableSetOf(true)
+                if (Oyamatsumi.GRIEF_PREVENTION_ENABLED) {
+                    element.add(Oyamatsumi.GRIEF_PREVENTION_DATA!!
+                        .claims
+                        .filter { c -> c.contains(loc, false, false) }
+                        .all { c -> c.hasExplicitPermission(player, ClaimPermission.Build) }
+                    )
+                }
+
+                if (Oyamatsumi.WORLD_GUARD_ENABLED) {
+                    val regionManager: RegionManager = Oyamatsumi.WORLD_GUARD!!.platform
+                        .regionContainer
+                        .get(BukkitAdapter.adapt(loc.world))
+                        ?: continue
+                    val x: Int = loc.blockX
+                    val y: Int = loc.blockY
+                    val z: Int = loc.blockZ
+
+                    element.add(regionManager.regions
+                        .filter{ (_, region) -> region.contains(BlockVector3.at(x, y, z))}
+                        .all { (_, region) ->
+                            region.members.contains(player.uniqueId)
+                                    || region.owners.contains(player.uniqueId)
+                        })
+                }
+                result[loc] = element.size == 1 && element.first()
+            }
+
+            result
         }
     }
 
@@ -39,55 +86,39 @@ data class MiningSettingComponent(
         val tool: ItemStack = event.player.inventory.itemInMainHand
         val player: Player = event.player
 
-        if (!tool.itemMeta.isUnbreakable && tool.itemMeta is Damageable) {
-            tool.editMeta { meta ->
-                (meta as Damageable).damage += 1
-            }
-        }
+        val blocks: Set<Location> = this.pattern.onMining(
+            block = event.block,
+            face = hitBlockFace,
+            tool = tool,
+            miner = player,
+            maxMiningBlock = maxMiningBlocks,
+            targets = targets
+        )
 
-        for (loc in this.pattern.onMining(
-            event.block,
-            hitBlockFace,
-            tool,
-            player,
-            maxMiningBlocks,
-            this.targets
-        )) {
-            if (Oyamatsumi.GRIEF_PREVENTION_ENABLED) {
-                if (!Oyamatsumi.GRIEF_PREVENTION_DATA!!
-                    .claims
-                    .filter { c -> c.contains(loc, false, false) }
-                    .all { c -> c.hasExplicitPermission(player, ClaimPermission.Build) }
-                ) continue
-            }
+        durabilityReducer(tool, regionProtectChecker(player, blocks))
+            .filter { (_, result) -> result }
+            .map { (l, _) -> l.block }
+            .forEach { block ->
+                if (block.isPreferredTool(tool)) {
 
-            if (Oyamatsumi.WORLD_GUARD_ENABLED) {
-                val regionManager: RegionManager = Oyamatsumi.WORLD_GUARD!!.platform
-                    .regionContainer
-                    .get(BukkitAdapter.adapt(event.block.world))
-                    ?: continue
-                val x: Int = event.block.x
-                val y: Int = event.block.y
-                val z: Int = event.block.z
+                    if (Oyamatsumi.CORE_PROTECT_ENABLED) {
+                        Oyamatsumi.CORE_PROTECT_API!!.logRemoval(player.name, block.state)
+                    }
 
-                if (!regionManager.regions
-                        .filter{ (_, region) -> region.contains(BlockVector3.at(x, y, z))}
-                        .all { (_, region) ->
-                            region.members.contains(player.uniqueId)
-                                    || region.owners.contains(player.uniqueId)
+                    val hasMendingTool: Boolean = player.inventory
+                        .let { inv ->
+                            tool.enchantments.containsKey(Enchantment.MENDING)
+                                .or(inv.itemInOffHand.enchantments.containsKey(Enchantment.MENDING))
+                                .or(inv.armorContents.any { i ->
+                                    i?.enchantments?.containsKey(Enchantment.MENDING) == true
+                                })
                         }
-                    ) continue
-            }
-
-            loc.block.let { b ->
-                if (b.isPreferredTool(tool)) {
-                    player.giveExp(event.expToDrop)
-                    player.inventory.addItem(*b.getDrops(tool).toTypedArray())
+                    player.giveExp(event.expToDrop, hasMendingTool)
+                    player.inventory.addItem(*block.getDrops(tool).toTypedArray())
                         .forEach { (_, overflow) -> player.world.dropItem(player.location, overflow) }
-                    b.type = Material.AIR
+                    block.type = Material.AIR
                 }
             }
-        }
     }
 
     private fun getHitBlockFace(player: Player): BlockFace? {

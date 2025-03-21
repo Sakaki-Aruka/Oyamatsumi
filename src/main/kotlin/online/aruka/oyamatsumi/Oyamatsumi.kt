@@ -3,12 +3,15 @@ package online.aruka.oyamatsumi
 import com.sk89q.worldguard.WorldGuard
 import me.ryanhamshire.GriefPrevention.DataStore
 import me.ryanhamshire.GriefPrevention.GriefPrevention
+import net.coreprotect.CoreProtect
+import net.coreprotect.CoreProtectAPI
 import online.aruka.oyamatsumi.impl.MiningManager
 import online.aruka.oyamatsumi.impl.MiningSettingComponent
 import online.aruka.oyamatsumi.impl.listener.MineListener
 import online.aruka.oyamatsumi.impl.pattern.NormalVeinPattern
 import online.aruka.oyamatsumi.impl.pattern.SquareTunnelPattern
 import online.aruka.oyamatsumi.interfaces.MiningPattern
+import online.aruka.oyamatsumi.placeholder.OyamatsumiExpansion
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.plugin.java.JavaPlugin
@@ -52,9 +55,18 @@ class Oyamatsumi : JavaPlugin() {
 
         var WORLD_GUARD_ENABLED: Boolean = false
         var WORLD_GUARD: WorldGuard? = null
+
+        var CORE_PROTECT_ENABLED: Boolean = false
+        var CORE_PROTECT_API: CoreProtectAPI? = null
+
+        lateinit var instance: Oyamatsumi
     }
 
     override fun onEnable() {
+
+        instance = this
+        MiningManager.loadPlayerSettings()
+        getCommand("miner")?.setExecutor(MiningManager)
 
         Bukkit.getPluginManager().getPlugin("GriefPrevention")?.let { pl ->
             logger.info("GriefPrevention detected.")
@@ -75,6 +87,23 @@ class Oyamatsumi : JavaPlugin() {
             WORLD_GUARD = WorldGuard.getInstance()
         } ?: run {
             logger.info("WorldGuard not detected.")
+        }
+
+        Bukkit.getPluginManager().getPlugin("PlaceholderAPI")?.let { _ ->
+            logger.info("PlaceholderAPI detected.")
+            OyamatsumiExpansion.register()
+        } ?: run {
+            logger.info("PlaceholderAPI not detected.")
+        }
+
+        Bukkit.getPluginManager().getPlugin("CoreProtect")?.let { pl ->
+            (pl as? CoreProtect)?.let { cp ->
+                CORE_PROTECT_ENABLED = true
+                CORE_PROTECT_API = cp.api
+                logger.info("CoreProtect detected.")
+            } ?: run {
+                logger.info("CoreProtect not detected.")
+            }
         }
 
         Bukkit.getPluginManager().registerEvents(MineListener, this)
@@ -100,30 +129,80 @@ class Oyamatsumi : JavaPlugin() {
             Material.BLUE_ICE,
             Material.FROSTED_ICE,
             Material.SOUL_SAND,
-            Material.SOUL_SOIL
+            Material.SOUL_SOIL,
+            Material.ROOTED_DIRT
+        )
+
+        Material
+            .entries
+            .filter { type -> type.name.endsWith("WOOD") && type.isBlock }
+            .forEach { type ->
+                val name: String = type.name.split("_").first()
+                val sameWoodType: Set<Material> = Material.entries.filter { t -> t.name.startsWith(name) }.toSet()
+                MiningManager.MINING_COMPONENTS.add(
+                    MiningSettingComponent(
+                        targets = sameWoodType,
+                        tools = allAxes,
+                        maxMiningBlocks = 1000,
+                        NormalVeinPattern(1000)
+                    )
+                )
+            }
+
+        MiningManager.MINING_COMPONENTS
+            .firstOrNull { c -> c.targets.contains(Material.OAK_LOG) }
+            ?.let { c ->
+                MiningManager.MINING_COMPONENTS.remove(c)
+                MiningManager.MINING_COMPONENTS.add(
+                    MiningSettingComponent(
+                        targets = setOf(
+                            *c.targets.toTypedArray(),
+                            Material.FLOWERING_AZALEA_LEAVES,
+                            Material.AZALEA_LEAVES),
+                        tools = c.tools,
+                        maxMiningBlocks = c.maxMiningBlocks,
+                        pattern = c.pattern
+                    )
+                )
+            }
+
+        MiningManager.MINING_COMPONENTS.add(
+            MiningSettingComponent(
+                targets = Material
+                    .entries
+                    .filter { type -> type.name.contains("MUSHROOM") && type.isBlock }
+                    .toSet(),
+                tools = allAxes,
+                maxMiningBlocks = 500,
+                NormalVeinPattern(500)
+            )
+        )
+
+        MiningManager.MINING_COMPONENTS.add(
+            MiningSettingComponent(
+                targets = setOf(Material.CRIMSON_STEM, Material.CRIMSON_HYPHAE),
+                tools = allAxes,
+                maxMiningBlocks = 500,
+                NormalVeinPattern(500)
+            )
+        )
+
+        MiningManager.MINING_COMPONENTS.add(
+            MiningSettingComponent(
+                targets = setOf(Material.WARPED_STEM, Material.WARPED_HYPHAE),
+                tools = allAxes,
+                maxMiningBlocks = 500,
+                NormalVeinPattern(500)
+            )
         )
 
         addNormalCategorizedSettings(
             allAxes,
             NormalVeinPattern(),
             maxMiningBlock = 200,
-            *loosen(
-                allLogs,
-                allWoods,
-                setOf(
-                    Material.BROWN_MUSHROOM_BLOCK,
-                    Material.CARVED_PUMPKIN,
-                    Material.CRIMSON_HYPHAE,
-                    Material.CRIMSON_STEM,
-                    Material.MANGROVE_ROOTS,
-                    Material.MELON,
-                    Material.PUMPKIN,
-                    Material.RED_MUSHROOM_BLOCK,
-                    Material.MUSHROOM_STEM,
-                    Material.WARPED_HYPHAE,
-                    Material.WARPED_STEM
-                )
-            ).toTypedArray()
+            Material.MANGROVE_ROOTS,
+            Material.MELON,
+            Material.PUMPKIN,
         )
 
         addNormalCategorizedSettings(
@@ -140,38 +219,32 @@ class Oyamatsumi : JavaPlugin() {
             allHoes,
             NormalVeinPattern(),
             maxMiningBlock = 200,
-            *allLeaves.toTypedArray()
+            *allLeaves.toTypedArray(),
+            Material.MOSS_BLOCK,
+            Material.MOSSY_COBBLESTONE
         )
 
-        addNormalCategorizedSettings(
-            allPickaxes,
-            SquareTunnelPattern(),
-            maxMiningBlock = 9,
-            Material.NETHERRACK,
-            Material.STONE,
-            Material.GRANITE,
-            Material.DIORITE,
-            Material.ANDESITE,
-            Material.DEEPSLATE,
-            Material.TUFF,
-            Material.CALCITE,
-            Material.DRIPSTONE_BLOCK,
-            Material.POINTED_DRIPSTONE,
-            Material.ROOTED_DIRT
+        MiningManager.MINING_COMPONENTS.add(
+            MiningSettingComponent(
+                targets = setOf(
+                    Material.NETHERRACK,
+                    Material.STONE,
+                    Material.COBBLESTONE,
+                    Material.GRANITE,
+                    Material.DIORITE,
+                    Material.ANDESITE,
+                    Material.DEEPSLATE,
+                    Material.COBBLED_DEEPSLATE,
+                    Material.TUFF,
+                    Material.CALCITE,
+                    Material.DRIPSTONE_BLOCK,
+                    Material.POINTED_DRIPSTONE,
+                ),
+                tools = allPickaxes,
+                maxMiningBlocks = 9,
+                SquareTunnelPattern()
+            )
         )
-
-        Material.entries
-            .filter { type -> type.name.lowercase().endsWith("stone") }
-            .forEach { type ->
-                MiningManager.MINING_COMPONENTS.add(
-                    MiningSettingComponent(
-                        targets = setOf(type),
-                        tools = allPickaxes,
-                        maxMiningBlocks = 9,
-                        pattern = SquareTunnelPattern()
-                    )
-                )
-            }
 
         addNormalCategorizedSettings(
             tools = allPickaxes,
@@ -197,5 +270,6 @@ class Oyamatsumi : JavaPlugin() {
 
     override fun onDisable() {
         // Plugin shutdown logic
+        MiningManager.flushPlayerSettings()
     }
 }
